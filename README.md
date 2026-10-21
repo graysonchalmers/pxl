@@ -46,7 +46,7 @@ mushroom for pillow shading and passes the right one.
 ## Quick start
 
 ```sh
-git clone https://github.com/uilianks/claude-pxl.git
+git clone https://github.com/uilianks/pxl.git
 cd claude-pxl
 node bin/pxl.js serve examples/shop.px.js     # live viewer at http://127.0.0.1:4321/
 ```
@@ -54,7 +54,7 @@ node bin/pxl.js serve examples/shop.px.js     # live viewer at http://127.0.0.1:
 Or run it without cloning:
 
 ```sh
-npx github:uilianks/claude-pxl build art.px.js
+npx github:uilianks/pxl build art.px.js
 ```
 
 Write `art.px.js`:
@@ -100,7 +100,7 @@ pxl list  <art.px.js>            list assets, groups and sheets with source loca
 pxl lint  <art.px.js> [name ...] critique pixels: orphans, jaggies, pillow shading, palette
 ```
 
-`pxl` means `node bin/pxl.js` in a clone, or `npx github:uilianks/claude-pxl`. Art files can be `.js` or
+`pxl` means `node bin/pxl.js` in a clone, or `npx github:uilianks/pxl`. Art files can be `.js` or
 `.ts` (`types/pxl.d.ts` gives editor completion).
 
 ## What's in the DSL
@@ -127,9 +127,9 @@ preview → patch), `reference.md` holds the full API, and `lighting.md` is load
 
 ```sh
 # all projects
-git clone https://github.com/uilianks/claude-pxl.git ~/.claude/skills/pxl-pixel-art
+git clone https://github.com/uilianks/pxl.git ~/.claude/skills/pxl-pixel-art
 # or just one project
-git clone https://github.com/uilianks/claude-pxl.git .claude/skills/pxl-pixel-art
+git clone https://github.com/uilianks/pxl.git .claude/skills/pxl-pixel-art
 ```
 
 **Other agents** (Codex, Cursor, …): point them at `SKILL.md` and tell them the CLI is
