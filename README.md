@@ -28,7 +28,7 @@ Every image above is generated from a file in [`examples/`](examples).
 
 A fork of [crsolver/claude-pxl](https://github.com/crsolver/claude-pxl) (all credit for pxl itself
 goes there) that adds tools aimed at one thing: **art that reads as hand-made pixel art**, not
-"shapes filled with a gradient".
+"shapes filled with a gradient". Part of a family with [**vex**](https://github.com/uilianks/vex) (vector art, skeletal animation), [**chirp**](https://github.com/uilianks/chirp) (game audio), [**kiln**](https://github.com/uilianks/kiln) (low-poly and voxel 3D) and [**loom**](https://github.com/uilianks/loom) (seamless textures and PBR materials).
 
 <p><img src="docs/gallery/polish.png" width="100%" alt="The same mushroom before (black outline, pillow shading, lint flags it) and after (hue-shifted shades, selective outline, light from the top-left)"></p>
 
