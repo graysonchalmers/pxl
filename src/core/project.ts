@@ -8,6 +8,7 @@ import {
   type SheetDef, type SheetOpts, type Timeline, isLayer, isOp,
 } from "./model.ts";
 import { Palette } from "./palette.ts";
+import { type ShadeOpts, parseHex, shadeRamp, toHex } from "./color.ts";
 import { Trace } from "./trace.ts";
 import { globRe, rng } from "./util.ts";
 
@@ -59,9 +60,9 @@ const OP_OPTS: Record<string, string[]> = {
 };
 
 const ASSET_OPTS: Record<AssetKind, string[]> = {
-  sprite: ["w", "h", "base", "mx", "my", "swap", "flip", "rot", "outline", "outline8", "crop", "layers"],
-  scene: ["w", "h", "bg", "mx", "my", "swap", "flip", "rot", "outline", "outline8", "crop", "layers"],
-  anim: ["w", "h", "base", "mx", "my", "swap", "flip", "rot", "outline", "outline8", "crop", "layers", "fps", "frames", "loop"],
+  sprite: ["w", "h", "base", "mx", "my", "swap", "flip", "rot", "outline", "outline8", "selout", "crop", "layers"],
+  scene: ["w", "h", "bg", "mx", "my", "swap", "flip", "rot", "outline", "outline8", "selout", "crop", "layers"],
+  anim: ["w", "h", "base", "mx", "my", "swap", "flip", "rot", "outline", "outline8", "selout", "crop", "layers", "fps", "frames", "loop"],
 };
 const FRAME_OPTS = ["ms", "hold"];
 /** Longest loop a combined timeline may have (ms); longer ones are cut. */
@@ -200,6 +201,19 @@ export class Project implements BuildCtx {
     };
     env.pal = (aliases: Record<string, string | number>) => {
       try { this.pal = this.pal.extend(aliases); } catch (e) { throw wrap(e).within("pal", this.callerLoc()); }
+    };
+    env.shades = (keys: unknown, base: unknown, o: unknown = {}) => {
+      const loc = this.callerLoc();
+      try {
+        if (typeof keys !== "string" || [...keys].length < 2) throw new PxError('shades("kDdlL", "#58a845", { shift, spread, sat }): 2+ new keys, dark -> light');
+        const c = typeof base === "string" ? parseHex(base) : undefined;
+        if (c === undefined) throw new PxError(`shades: base must be "#rrggbb", got ${JSON.stringify(base)}`);
+        if (typeof o !== "object" || o === null) throw new PxError("shades options: { shift, spread, sat }");
+        const cols = shadeRamp(c, [...keys].length, o as ShadeOpts);
+        const aliases: Record<string, string> = {};
+        [...keys].forEach((k, i) => { aliases[k] = toHex(cols[i]); });
+        this.pal = this.pal.extend(aliases).withRamps([keys]);
+      } catch (e) { throw wrap(e).within("shades", loc); }
     };
     env.ramps = (...ramps: string[]) => {
       try { this.pal = this.pal.withRamps(ramps); } catch (e) { throw wrap(e).within("ramps", this.callerLoc()); }

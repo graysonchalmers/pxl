@@ -22,7 +22,7 @@ declare global {
   interface PxText { scale?: number; gap?: number; lead?: number; align?: "l" | "c" | "r"; shadow?: PxColor }
   interface PxAssetOpts {
     w?: number; h?: number; base?: string; mx?: boolean | "c"; my?: boolean | "c"; swap?: Record<string, PxColor>;
-    flip?: "x" | "y" | "xy"; rot?: 90 | 180 | 270; outline?: PxColor; outline8?: PxColor; crop?: boolean; layers?: boolean;
+    flip?: "x" | "y" | "xy"; rot?: 90 | 180 | 270; outline?: PxColor; outline8?: PxColor; selout?: PxColor; crop?: boolean; layers?: boolean;
   }
   interface PxSceneOpts extends PxAssetOpts { w: number; h: number; bg?: PxColor }
   interface PxAnimOpts extends PxAssetOpts { fps?: number; frames?: number; loop?: boolean }
@@ -84,6 +84,7 @@ declare global {
   function use(palette: "pico8" | "sweetie16" | "db16" | "endesga32" | "gray8" | (string | number)[]): void;
   function pal(keys: Record<string, string | number>): void;
   function ramps(...darkToLight: string[]): void;
+  function shades(keys: string, base: string, opts?: { shift?: number; spread?: number; sat?: number }): void;
   function sprite(name: string, opts: PxAssetOpts, ...items: PxItem[]): void;
   function sprite(name: string, ...items: PxItem[]): void;
   function scene(name: string, opts: PxSceneOpts, ...items: PxItem[]): void;

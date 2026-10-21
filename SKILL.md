@@ -19,6 +19,8 @@ parts, primitives, brushes and tilemaps. Needs Node ≥ 22.18. No install step.
    pixel, darker every 8). For exact pixel fixes use `PXL ascii art.px.js <name>` (keys + x/y rulers);
    it's cheaper than an image.
 4. Fix with small edits (a `grid(x, y, ...)` patch, one op) and rebuild. Repeat.
+   Before calling a sprite done, run `PXL lint art.px.js <name>`: it lists orphan pixels, jaggies
+   and pillow shading with coordinates (and boxes them in `_preview/<name>.lint.png`).
 5. If the user wants to watch: start `PXL serve art.px.js` in the background and give them the URL.
    It rebuilds on every save and replays the edited asset's painting steps; it also writes the same
    `out/` files, so keep reading previews as usual.
@@ -74,6 +76,9 @@ sheet("chars", ["slime*", "chest"], { pad: 1 })
   frames are patches over shared items or a `base`; or `frames: 6` + `(c) => ... c.phase ...` for
   procedural loops. Stamping an anim animates the scene (`rdelay: true` desyncs copies, `frame: n`
   freezes one). Check `_preview/<name>.png` (all frames side by side) or `pxl ascii` per frame.
+- **Color**: `shades("1234", "#c8323c")` makes a hue-shifted ramp (cool shadows, warm lights) as
+  new keys, already wired for `shade`/`light`. Prefer it to picking ramp colors by hand.
+  `selout: "k"` instead of `outline` draws the outline in each neighbor's darker shade.
 - **Glow**: `glow("zgQ", { r: 6, strength: 0.5 })` directly in a sprite/scene body gives every pixel
   of those keys a halo (flames, potions, moons, neon); `ramp: 2` instead stays in the palette.
   Give glowing things their own keys so nothing else lights up, or limit it with `where`.
@@ -84,6 +89,9 @@ Dynamic lighting (lamps, light blocked by solid layers, sky light, Terraria-styl
 
 ## Habits that save tokens and give better art
 
+- **Light from one direction** (usually top-left): lit side `light`, far side and undersides
+  `shade`. Concentric "light in the middle" shading (pillow shading) is the classic beginner look;
+  `lint` flags it.
 - Write half of anything symmetric (`mx`) and let `outline` draw outlines. Never hand-draw either.
 - Recolors are `base` + `swap`; repeated details are `_parts` + `stamp`; families are a `group` or a
   loop: `for (let i = 1; i <= 3; i++) sprite("tree_" + i, ...)`.

@@ -15,6 +15,7 @@ Coordinates are 0-based from the top-left. Sizes are `w, h`. Colors are a single
 | `use("pico8")` | Built-in palette: `pico8` (default), `sweetie16`, `db16`, `endesga32`, `gray8`. Keys are index chars `0-9a-z`. |
 | `use(["#000", "#fff", ...])` | Custom list, keys `0-9a-zA-Z` by index. |
 | `pal({ k: "#1b1630", g: 11, h: "k" })` | Add/override single-char keys: hex, palette index, or copy of another key. `. _ # space` are reserved. |
+| `shades("1234", "#c8323c", { shift = 24, spread = 0.56, sat = 1 })` | New keys as a **hue-shifted ramp** (dark → light) around one base color, registered as a ramp: shadows turn cool (toward blue-violet), lights turn warm (toward yellow), darks gain saturation and lights lose it. `shift` = max hue rotation in degrees, `spread` = lightness range, `sat` scales saturation. Usually beats hand-picked ramps. |
 | `ramps("kDdu", "kTtq")` | Light ramps, dark → light. `shade` steps a color left, `light` steps right. When a key is in several ramps, the first ramp wins. |
 
 Every asset keeps the palette that was active where it was defined, so files with different
@@ -55,10 +56,11 @@ sheet globs.
 | `swap: { g: "r" }` | Recolor after drawing. |
 | `flip: "x" \| "y" \| "xy"`, `rot: 90 \| 180 \| 270` | Transform. |
 | `outline: "k"` | 1px outline around opaque pixels; **grows the canvas 1px on every side**. `outline8` also fills diagonals. |
+| `selout: "k"` | **Selective outline**: like `outline`, but each outline pixel takes the color it touches two ramp steps darker, so the line follows the shading (soft on lit sides, deep in shadow). Colors with no ramp get `"k"`. Pair it with `shades`. |
 | `crop: true` | Trim to opaque bounds. |
 | `layers: true` | Also export each layer as `out/<sprites\|scenes>/<name>/<layer>.png`. |
 
-Post-processing order: mirror → swap → flip → rot → outline → crop.
+Post-processing order: mirror → swap → flip → rot → outline → selout → crop.
 
 ### Layer options
 
@@ -203,7 +205,21 @@ node <pxl>/bin/pxl.js build <file> [--out DIR] [--only a,b] [--scale N] [--no-pr
 node <pxl>/bin/pxl.js serve <file> [--port 4321] [--out DIR | --no-out] [--no-preview]
 node <pxl>/bin/pxl.js ascii <file> <name>
 node <pxl>/bin/pxl.js list  <file>
+node <pxl>/bin/pxl.js lint  <file> [name ...] [--no-preview]
 ```
+
+`lint` critiques built pixels (every exported asset by default, the first frame of anims) and
+prints coordinates to fix:
+
+| Rule | Flags |
+|---|---|
+| `orphan` | A lone pixel inside a shape with no same-color neighbor and little contrast: noise, not detail. |
+| `jaggy` | An L-shaped doubled corner in a 1-px line (where it should step diagonally). |
+| `pillow` | A color family lit from its middle on every side instead of from one direction. |
+| `colors` | More than 24 colors in a sprite of 64×64 or less. |
+| `near-duplicate` | Color pairs so close they read as one. Skipped for lit renders (over 64 colors). |
+
+It also writes `_preview/<name>.lint.png` with orphans boxed in magenta and jaggies in cyan.
 
 Outputs go to `<file dir>/out`: `sprites/<n>.png`, `scenes/<n>.png`, `<sheet>.png` + `<sheet>.json`
 (TexturePacker hash format: Phaser, Godot importers, ...), `_preview/<n>.png` (upscaled to

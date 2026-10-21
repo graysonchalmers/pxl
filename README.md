@@ -24,10 +24,29 @@ for people too. No runtime dependencies, no build step: just Node ≥ 22.18.
 
 Every image above is generated from a file in [`examples/`](examples).
 
+## This fork
+
+A fork of [crsolver/claude-pxl](https://github.com/crsolver/claude-pxl) (all credit for pxl itself
+goes there) that adds tools aimed at one thing: **art that reads as hand-made pixel art**, not
+"shapes filled with a gradient".
+
+<p><img src="docs/gallery/polish.png" width="100%" alt="The same mushroom before (black outline, pillow shading, lint flags it) and after (hue-shifted shades, selective outline, light from the top-left)"></p>
+
+- **`shades("1234", "#c8323c")`**: builds a hue-shifted ramp from one color. Shadows go cool and
+  more saturated, lights go warm and paler, and the ramp is wired up for `shade()`/`light()`.
+- **`selout: "k"`**: a selective outline. Each outline pixel takes the color it touches, two ramp
+  steps darker, so the line softens on lit edges and deepens in shadow.
+- **`pxl lint`**: an art critic for built pixels. It flags orphan pixels, jaggies (doubled corners
+  in 1-px lines), pillow shading, too many colors and near-duplicate colors, each with coordinates
+  and a `_preview/<name>.lint.png` overlay. Agents run it before they call a sprite done.
+
+The before/after is [`examples/polish.px.js`](examples/polish.px.js): `lint` flags the left
+mushroom for pillow shading and passes the right one.
+
 ## Quick start
 
 ```sh
-git clone https://github.com/crsolver/claude-pxl.git
+git clone https://github.com/uilianks/claude-pxl.git
 cd claude-pxl
 node bin/pxl.js serve examples/shop.px.js     # live viewer at http://127.0.0.1:4321/
 ```
@@ -35,7 +54,7 @@ node bin/pxl.js serve examples/shop.px.js     # live viewer at http://127.0.0.1:
 Or run it without cloning:
 
 ```sh
-npx github:crsolver/claude-pxl build art.px.js
+npx github:uilianks/claude-pxl build art.px.js
 ```
 
 Write `art.px.js`:
@@ -78,9 +97,10 @@ pxl build <art.px.js> [--out DIR] [--only a,b] [--scale N] [--no-preview]
 pxl serve <art.px.js> [--port 4321] [--out DIR | --no-out] [--no-preview]
 pxl ascii <art.px.js> <name>     print an asset as palette keys with x/y rulers
 pxl list  <art.px.js>            list assets, groups and sheets with source locations
+pxl lint  <art.px.js> [name ...] critique pixels: orphans, jaggies, pillow shading, palette
 ```
 
-`pxl` means `node bin/pxl.js` in a clone, or `npx github:crsolver/claude-pxl`. Art files can be `.js` or
+`pxl` means `node bin/pxl.js` in a clone, or `npx github:uilianks/claude-pxl`. Art files can be `.js` or
 `.ts` (`types/pxl.d.ts` gives editor completion).
 
 ## What's in the DSL
@@ -107,9 +127,9 @@ preview → patch), `reference.md` holds the full API, and `lighting.md` is load
 
 ```sh
 # all projects
-git clone https://github.com/crsolver/claude-pxl.git ~/.claude/skills/pxl-pixel-art
+git clone https://github.com/uilianks/claude-pxl.git ~/.claude/skills/pxl-pixel-art
 # or just one project
-git clone https://github.com/crsolver/claude-pxl.git .claude/skills/pxl-pixel-art
+git clone https://github.com/uilianks/claude-pxl.git .claude/skills/pxl-pixel-art
 ```
 
 **Other agents** (Codex, Cursor, …): point them at `SKILL.md` and tell them the CLI is
@@ -141,4 +161,4 @@ inside `node_modules`).
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). Copyright crsolver (original pxl); fork additions by uilianks under the same license.

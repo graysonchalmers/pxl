@@ -215,6 +215,30 @@ export class Img {
     return o;
   }
 
+  /**
+   * Selective outline ("sel-out"): like outline(), but each outline pixel takes a darker shade of the
+   * color it borders (via `darker`), so the silhouette reads without a hard black line.
+   * Neighbors with no darker shade fall back to `c`.
+   */
+  selout(darker: Map<Color, Color>, c: Color, diagonal = false): Img {
+    const src = this.pad(1);
+    const o = src.copy();
+    const at = (x: number, y: number) => src.get(x, y);
+    const order = diagonal ? [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]] : [[0, 1], [0, -1], [1, 0], [-1, 0]];
+    for (let y = 0; y < src.h; y++)
+      for (let x = 0; x < src.w; x++) {
+        if (at(x, y) !== TRANSPARENT) continue;
+        // prefer the pixel below/above (shading reads vertically), then the sides
+        for (const [dx, dy] of order) {
+          const n = at(x + dx, y + dy);
+          if (n === TRANSPARENT) continue;
+          o.set(x, y, darker.get(n) ?? c);
+          break;
+        }
+      }
+    return o;
+  }
+
   /** Replace colors through a map. */
   remap(map: Map<Color, Color>): Img {
     const o = this.copy();

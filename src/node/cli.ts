@@ -1,9 +1,10 @@
 // pxl command line.
 import { dirname, join, resolve } from "node:path";
 import { PxError, wrap } from "../core/errors.ts";
-import { ascii } from "../core/render.ts";
+import { ascii, preview } from "../core/render.ts";
+import { lint } from "../core/lint.ts";
 import { loadProject } from "./load.ts";
-import { writeOutputs } from "./output.ts";
+import { writeOutputs, writePng } from "./output.ts";
 import { serve } from "./server.ts";
 
 const USAGE = `pxl — pixel-art DSL
@@ -15,6 +16,9 @@ const USAGE = `pxl — pixel-art DSL
       Live viewer: rebuilds on save and replays each asset's painting steps.
   pxl ascii <art.px.js> <name>
       Print an asset as palette keys with x/y rulers (anims: every frame).
+  pxl lint  <art.px.js> [name ...]
+      Critique pixel art: orphan pixels, jaggies, pillow shading, near-duplicate and too many colors,
+      with coordinates; writes out/_preview/<name>.lint.png marking the pixels (default: every asset).
   pxl list  <art.px.js>
       List assets, groups and sheets with their source locations.
 
@@ -82,6 +86,30 @@ export async function main(argv: string[]): Promise<number> {
         if (p.assets.get(name)?.kind === "anim")
           p.frames(name).forEach((f, i) => console.log(`frame ${i} (${f.ms}ms)\n${ascii(f.img, pal)}\n`));
         else console.log(ascii(p.image(name), pal));
+        return 0;
+      }
+      case "lint": {
+        const p = loadProject(file);
+        const names = a.rest.length ? a.rest : p.exported();
+        let total = 0;
+        for (const name of names) {
+          const img = p.assets.get(name)?.kind === "anim" ? p.frames(name)[0]?.img ?? p.image(name) : p.image(name);
+          const found = lint(img, p.assets.get(name)?.kind ?? "asset");
+          total += found.length;
+          if (!found.length) { console.log(`${name}: clean`); continue; }
+          console.log(`${name}: ${found.length} finding${found.length > 1 ? "s" : ""}`);
+          for (const f of found) console.log(`  ${f.rule.padEnd(14)} ${f.message}${f.at.length ? `\n${" ".repeat(17)}at ${f.at.slice(0, 12).map(([x, y]) => `${x},${y}`).join(" ")}${f.at.length > 12 ? " …" : ""}` : ""}`);
+          if (a.preview !== false && found.some((f) => f.at.length)) {
+            const s = Math.max(4, Math.min(16, Math.floor(512 / Math.max(img.w, img.h))));
+            const pv = preview(img, s);
+            const mark = { orphan: 0xff2bd6ff, jaggy: 0x00e5ffff } as Record<string, number>;
+            for (const f of found) for (const [x, y] of f.at)
+              for (let k = 0; k < s; k++) for (const [px, py] of [[x * s + k, y * s], [x * s + k, y * s + s - 1], [x * s, y * s + k], [x * s + s - 1, y * s + k]])
+                pv.set(px, py, mark[f.rule] ?? 0xff0000ff);
+            writePng(join(outDir, "_preview", `${name}.lint.png`), pv);
+          }
+        }
+        console.log(`${total} finding${total === 1 ? "" : "s"} in ${names.length} asset${names.length === 1 ? "" : "s"}`);
         return 0;
       }
       case "list": {

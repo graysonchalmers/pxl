@@ -51,6 +51,8 @@ export interface AssetOpts {
   rot?: 90 | 180 | 270;
   outline?: string;
   outline8?: string;
+  /** Selective outline: each outline pixel is the bordering color two ramp steps darker (this color otherwise). */
+  selout?: string;
   crop?: boolean;
   /** Also export each layer as its own PNG. */
   layers?: boolean;

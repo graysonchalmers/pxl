@@ -289,6 +289,12 @@ function finish(img: Img, def: AssetDef, pal: Palette, trace?: Trace): Img {
   if (o.rot) step(`rot ${o.rot}`, () => img.rot(o.rot!));
   if (o.outline) step(`outline ${o.outline}`, () => img.outline(solid(pal, o.outline!), false));
   if (o.outline8) step(`outline8 ${o.outline8}`, () => img.outline(solid(pal, o.outline8!), true));
+  if (o.selout) step(`selout ${o.selout}`, () => {
+    // two ramp steps darker than the color it touches; the given color where there's no ramp
+    const d1 = pal.stepMap(-1), dark = new Map<Color, Color>();
+    for (const [a, b] of d1) dark.set(a, d1.get(b) ?? b);
+    return img.selout(dark, solid(pal, o.selout!));
+  });
   if (o.crop) step("crop", () => img.crop());
   return img;
 }
