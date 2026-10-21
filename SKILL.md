@@ -24,6 +24,12 @@ parts, primitives, brushes and tilemaps. Needs Node ≥ 22.18. No install step.
 5. If the user wants to watch: start `PXL serve art.px.js` in the background and give them the URL.
    It rebuilds on every save and replays the edited asset's painting steps; it also writes the same
    `out/` files, so keep reading previews as usual.
+6. **Feedback**: the viewer's annotate mode (`a`) lets the user paint marks and pin notes and send
+   them. When they say "check the feedback", read `out/_feedback/<asset>.json` (comment, notes with
+   pixel coordinates and the color under each, painted pixels grouped by color: `kind: "markup"`
+   points at something, `kind: "palette"` means "make these pixels this key") and look at
+   `<asset>.annotated.png`. Coordinates are in the asset's final pixels (outline included). Comments
+   persist between sends, so check the `time` and whether the marks changed.
 
 Errors name the file:line:col, the asset/layer/op path, and suggest fixes ("did you mean 'r'?").
 One broken asset doesn't stop the others from building.

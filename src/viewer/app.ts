@@ -22,6 +22,8 @@ let playing = false;
 let zoom = 0; // 0 = fit
 let pan = { x: 0, y: 0 };
 let hover: { x: number; y: number } | undefined;
+// last drawn layout, so mouse positions map to asset pixels
+let layout = { ox: 0, oy: 0, z: 1, dpr: 1, w: 0, h: 0 };
 const thumbs = new Map<string, string>(); // name -> hash rendered
 
 // ---------------------------------------------------------------- decoding
@@ -102,6 +104,7 @@ async function select(name: string, opts: { play?: boolean; keepStep?: boolean }
   step = opts.play ? 0 : opts.keepStep && prevStep < prevLen - 1 ? Math.min(prevStep, frames.length - 1) : frames.length - 1;
   renderSteps();
   renderPalette();
+  if (annotating) renderAnnot();
   setStep(step);
   if (opts.play) play(true);
 }
@@ -197,7 +200,8 @@ function renderPalette(): void {
     const s = document.createElement("span");
     s.style.background = v;
     s.textContent = k;
-    s.title = `${k} ${v}`;
+    s.title = `${k} ${v} — click to paint with it`;
+    s.onclick = () => { if (!annotating) setAnnotate(true); brush = parseInt(v.slice(1).padEnd(8, "f"), 16) >>> 0; tool = "brush"; renderAnnot(); };
     box.append(s);
   }
 }
@@ -233,7 +237,8 @@ function draw(): void {
   showError();
   if (!cur) { $("hud").textContent = ""; return; }
 
-  const pic = animating() ? cur.anim[animAt].pic : picAt(cur, step);
+  // annotating always shows the finished image (marks are in its pixels; the replay can be capped)
+  const pic = annotating ? cur.final : animating() ? cur.anim[animAt].pic : picAt(cur, step);
   const fit = Math.max(1, Math.min(48, Math.floor(Math.min((W - 40) / pic.w, (H - 40) / pic.h))));
   const z = zoom || fit;
   const ox = Math.floor((W - pic.w * z) / 2 + pan.x * dpr), oy = Math.floor((H - pic.h * z) / 2 + pan.y * dpr);
@@ -274,6 +279,8 @@ function draw(): void {
     g.strokeRect(ox + x0 * z - 1.5, oy + y0 * z - 1.5, (x1 - x0 + 1) * z + 3, (y1 - y0 + 1) * z + 3);
   }
 
+  layout = { ox, oy, z, dpr, w: pic.w, h: pic.h };
+  drawMarks(ox, oy, z, dpr, pic);
   $("hud").textContent = `${cur.j.kind} ${cur.j.name} · ${pic.w}×${pic.h} · ${z}×${zoom ? "" : " (fit)"}` +
     (cur.anim.length ? ` · frame ${animating() ? animAt : 0}/${cur.anim.length - 1}` : "");
   inspect(pic, ox, oy, z, dpr);
@@ -410,18 +417,26 @@ stage.addEventListener("wheel", (e) => {
   draw();
 }, { passive: false });
 let drag: { x: number; y: number; px: number; py: number } | undefined;
-stage.addEventListener("mousedown", (e) => { drag = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y }; });
-window.addEventListener("mouseup", () => { drag = undefined; });
+stage.addEventListener("contextmenu", (e) => { if (annotating) e.preventDefault(); });
+stage.addEventListener("mousedown", (e) => {
+  if (annotating && !e.shiftKey && (e.button === 0 || e.button === 2)) { annotDown(e); return; }
+  drag = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
+});
+window.addEventListener("mouseup", () => { drag = undefined; stroke = undefined; });
 stage.addEventListener("mousemove", (e) => {
   const r = stage.getBoundingClientRect();
   hover = { x: e.clientX - r.left, y: e.clientY - r.top };
-  if (drag) pan = { x: drag.px + e.clientX - drag.x, y: drag.py + e.clientY - drag.y };
+  if (stroke) annotMove(e);
+  else if (drag) pan = { x: drag.px + e.clientX - drag.x, y: drag.py + e.clientY - drag.y };
   draw();
 });
 stage.addEventListener("mouseleave", () => { hover = undefined; draw(); });
 window.addEventListener("resize", draw);
 window.addEventListener("keydown", (e) => {
-  if ((e.target as HTMLElement).tagName === "INPUT" && (e.target as HTMLInputElement).type === "text") return;
+  const tag = (e.target as HTMLElement).tagName;
+  if ((tag === "INPUT" && (e.target as HTMLInputElement).type === "text") || tag === "TEXTAREA") return;
+  if (e.key === "a") { setAnnotate(!annotating); return; }
+  if (annotating && "bne".includes(e.key)) { tool = e.key === "b" ? "brush" : e.key === "n" ? "note" : "erase"; renderAnnot(); return; }
   if (e.key === " ") { e.preventDefault(); play(!playing); }
   else if (e.key === "ArrowLeft") { play(false); setStep(step - 1); }
   else if (e.key === "ArrowRight") { play(false); setStep(step + 1); }
@@ -437,5 +452,179 @@ window.addEventListener("keydown", (e) => {
     if (n) select(n);
   }
 });
+
+// ---------------------------------------------------------------- annotate: feedback for Claude
+// Marks are an overlay in asset pixels (same packing as images), per asset, kept in localStorage
+// until sent. Markup colors point at things; palette colors mean "make it this color".
+
+interface Marks { w: number; h: number; data: Uint32Array; notes: { x: number; y: number; text: string }[]; comment: string }
+const MARKUP = [0xff3df0ff, 0x2ee6ffff, 0xffe14aff, 0xffffffff];
+let annotating = false, tool: "brush" | "note" | "erase" = "brush", brush = MARKUP[0], size = 1;
+let stroke: { erase: boolean; last?: [number, number] } | undefined;
+const marks = new Map<string, Marks>();
+
+function marksFor(create: boolean): Marks | undefined {
+  if (!cur) return undefined;
+  const key = cur.j.name;
+  let m = marks.get(key);
+  if (m && (m.w !== cur.final.w || m.h !== cur.final.h)) { marks.delete(key); m = undefined; }   // asset resized
+  if (!m) {
+    try {
+      const saved = JSON.parse(localStorage.getItem("pxl.marks." + key) ?? "null");
+      if (saved && saved.w === cur.final.w && saved.h === cur.final.h) m = { ...saved, data: u32(saved.data) };
+    } catch { /* ignore */ }
+  }
+  if (!m && create) m = { w: cur.final.w, h: cur.final.h, data: new Uint32Array(cur.final.w * cur.final.h), notes: [], comment: "" };
+  if (m) marks.set(key, m);
+  return m;
+}
+function b64u32(a: Uint32Array): string {
+  let s = ""; const u8 = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function saveMarks(): void {
+  const m = marksFor(false);
+  if (!m || !cur) return;
+  try { localStorage.setItem("pxl.marks." + cur.j.name, JSON.stringify({ ...m, data: b64u32(m.data) })); } catch { /* full or blocked */ }
+}
+
+function setAnnotate(on: boolean): void {
+  annotating = on;
+  document.body.classList.toggle("annotating", on);
+  $("annotbtn").classList.toggle("on", on);
+  if (on) { $<HTMLInputElement>("animtog").checked = false; play(false); setStep(Infinity); }
+  renderAnnot();
+  draw();
+}
+
+function renderAnnot(): void {
+  for (const t of ["brush", "note", "erase"]) $("t-" + t).classList.toggle("on", tool === t);
+  $("t-size").textContent = `${size}px`;
+  const box = $("colors");
+  box.innerHTML = "";
+  for (const c of MARKUP.concat(MARKUP.includes(brush) ? [] : [brush])) {
+    const b = document.createElement("button");
+    b.className = "chip" + (c === brush && tool === "brush" ? " on" : "");
+    b.style.background = hex(c);
+    b.title = MARKUP.includes(c) ? "markup color" : "palette color: make it this";
+    b.onclick = () => { brush = c; tool = "brush"; renderAnnot(); };
+    box.append(b);
+  }
+  const m = marksFor(false);
+  const ol = $("notes");
+  ol.innerHTML = "";
+  m?.notes.forEach((n, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<b>${i + 1}</b><span></span><a title="remove">×</a>`;
+    (li.children[1] as HTMLElement).textContent = `(${n.x},${n.y}) ${n.text}`;
+    (li.children[2] as HTMLElement).onclick = () => { m.notes.splice(i, 1); saveMarks(); renderAnnot(); draw(); };
+    ol.append(li);
+  });
+  $<HTMLTextAreaElement>("comment").value = m?.comment ?? "";
+}
+
+function pixelAt(e: MouseEvent): [number, number] | undefined {
+  const r = stage.getBoundingClientRect();
+  const x = Math.floor(((e.clientX - r.left) * layout.dpr - layout.ox) / layout.z), y = Math.floor(((e.clientY - r.top) * layout.dpr - layout.oy) / layout.z);
+  return x >= 0 && y >= 0 && x < layout.w && y < layout.h ? [x, y] : undefined;
+}
+
+function dab(m: Marks, x: number, y: number, erase: boolean): void {
+  const o = Math.floor((size - 1) / 2);
+  for (let dy = 0; dy < size; dy++) for (let dx = 0; dx < size; dx++) {
+    const px = x - o + dx, py = y - o + dy;
+    if (px >= 0 && py >= 0 && px < m.w && py < m.h) m.data[py * m.w + px] = erase ? 0 : brush;
+  }
+}
+
+function annotDown(e: MouseEvent): void {
+  const p = pixelAt(e), m = marksFor(true);
+  if (!p || !m) return;
+  if (tool === "note" && e.button === 0) {
+    const text = prompt(`Note for Claude at pixel ${p[0]}, ${p[1]}:`);
+    if (text && text.trim()) { m.notes.push({ x: p[0], y: p[1], text: text.trim() }); saveMarks(); renderAnnot(); draw(); }
+    return;
+  }
+  stroke = { erase: tool === "erase" || e.button === 2, last: p };
+  dab(m, p[0], p[1], stroke.erase);
+  draw();
+}
+
+function annotMove(e: MouseEvent): void {
+  const p = pixelAt(e), m = marksFor(true);
+  if (!p || !m || !stroke) return;
+  let [x0, y0] = stroke.last ?? p;
+  const [x1, y1] = p, dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+  for (;;) {                                         // Bresenham, so fast strokes stay connected
+    dab(m, x0, y0, stroke.erase);
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x0 += sx; }
+    if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+  stroke.last = p;
+  saveMarks();
+}
+
+function drawMarks(ox: number, oy: number, z: number, dpr: number, pic: Pic): void {
+  const m = marksFor(false);
+  if (!m || m.w !== pic.w || m.h !== pic.h) return;
+  const off = new OffscreenCanvas(m.w, m.h);
+  off.getContext("2d")!.putImageData(toImageData({ w: m.w, h: m.h, data: m.data }), 0, 0);
+  g.globalAlpha = annotating ? 0.9 : 0.55;
+  g.drawImage(off, ox, oy, m.w * z, m.h * z);
+  g.globalAlpha = 1;
+  pins(g, m, ox, oy, z, dpr);
+}
+
+function pins(c: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, m: Marks, ox: number, oy: number, z: number, dpr: number): void {
+  const r = Math.max(7 * dpr, z * 0.9);
+  c.font = `700 ${Math.round(r * 1.1)}px ui-monospace, monospace`;
+  c.textAlign = "center"; c.textBaseline = "middle";
+  m.notes.forEach((n, i) => {
+    const cx = ox + (n.x + 0.5) * z, cy = oy + (n.y + 0.5) * z;
+    c.strokeStyle = "#ffb454"; c.lineWidth = Math.max(1.5, dpr * 1.5);
+    c.strokeRect(ox + n.x * z - 1, oy + n.y * z - 1, z + 2, z + 2);
+    c.beginPath(); c.arc(cx + r * 1.2, cy - r * 1.2, r, 0, Math.PI * 2);
+    c.fillStyle = "#ffb454"; c.fill();
+    c.fillStyle = "#15131c"; c.fillText(String(i + 1), cx + r * 1.2, cy - r * 1.2 + 1);
+  });
+}
+
+async function sendFeedback(): Promise<void> {
+  const m = marksFor(false), st = $("fbstatus");
+  if (!cur || !m) { st.textContent = "nothing to send yet"; return; }
+  // The annotated image: the asset scaled up, marks on top, numbered pins.
+  const s = Math.max(1, Math.floor(900 / Math.max(m.w, m.h)));
+  const cv = new OffscreenCanvas(m.w * s, m.h * s), c = cv.getContext("2d")!;
+  c.imageSmoothingEnabled = false;
+  const img = new OffscreenCanvas(m.w, m.h); img.getContext("2d")!.putImageData(toImageData(cur.final), 0, 0);
+  const mk = new OffscreenCanvas(m.w, m.h); mk.getContext("2d")!.putImageData(toImageData({ w: m.w, h: m.h, data: m.data }), 0, 0);
+  c.fillStyle = "#0e0d13"; c.fillRect(0, 0, cv.width, cv.height);
+  c.drawImage(img, 0, 0, cv.width, cv.height);
+  c.globalAlpha = 0.9; c.drawImage(mk, 0, 0, cv.width, cv.height); c.globalAlpha = 1;
+  pins(c, m, 0, 0, s, 1.4);
+  const blob = await cv.convertToBlob({ type: "image/png" });
+  const annotated = await new Promise<string>((ok) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result)); fr.readAsDataURL(blob); });
+  st.textContent = "sending…";
+  const r = await fetch("/api/feedback", { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: cur.j.name, w: m.w, h: m.h, marks: b64u32(m.data), notes: m.notes, comment: m.comment, annotated }) });
+  const j = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+  st.textContent = r.ok ? `sent ✓ ${j.summary} — tell Claude to check the feedback` : `not sent: ${j.error}`;
+}
+
+$("annotbtn").onclick = () => setAnnotate(!annotating);
+$("t-brush").onclick = () => { tool = "brush"; renderAnnot(); };
+$("t-note").onclick = () => { tool = "note"; renderAnnot(); };
+$("t-erase").onclick = () => { tool = "erase"; renderAnnot(); };
+$("t-size").onclick = () => { size = size === 1 ? 2 : size === 2 ? 4 : 1; renderAnnot(); };
+$("t-clear").onclick = () => {
+  if (!cur || !confirm(`Clear all marks and notes on ${cur.j.name}?`)) return;
+  marks.delete(cur.j.name); localStorage.removeItem("pxl.marks." + cur.j.name); renderAnnot(); draw();
+};
+$("comment").oninput = () => { const m = marksFor(true); if (m) { m.comment = ($<HTMLTextAreaElement>("comment")).value; saveMarks(); } };
+$("send").onclick = () => { void sendFeedback(); };
 
 connect();

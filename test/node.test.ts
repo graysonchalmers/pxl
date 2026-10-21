@@ -110,3 +110,25 @@ test("server: state, asset frames, rebuild on change", async () => {
     s.close();
   }
 });
+
+test("serve: feedback from the viewer is written next to the outputs", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "pxl-fb-"));
+  const file = join(dir, "a.px.js");
+  writeFileSync(file, `use("pico8")\nsprite("a", { w: 2, h: 1 }, px(0, 0, "8"), px(1, 0, "7"))`);
+  const s = await serve(file, { port: 0, out: join(dir, "out"), preview: false, log: () => {} });
+  const post = (body: unknown) => fetch(s.url + "api/feedback", { method: "POST", body: JSON.stringify(body) });
+  try {
+    const red = 0xff004dff, marks = Buffer.from(new Uint32Array([0, red]).buffer).toString("base64");
+    const r = await post({ name: "a", w: 2, h: 1, marks, notes: [{ x: 0, y: 0, text: "darker here" }], comment: "warmer" });
+    assert.equal(r.status, 200);
+    const fb = JSON.parse(readFileSync(join(dir, "out", "_feedback", "a.json"), "utf8"));
+    assert.equal(fb.comment, "warmer");
+    assert.deepEqual(fb.notes[0], { n: 1, x: 0, y: 0, text: "darker here", under: { hex: "#ff004d", key: "8" } });
+    assert.deepEqual(fb.paint.map((p: { key: string; kind: string; pixels: number[][] }) => [p.key, p.kind, p.pixels]), [["8", "palette", [[1, 0]]]]);
+    assert.ok(existsSync(join(dir, "out", "_feedback", "a.marks.png")) && existsSync(join(dir, "out", "_feedback", "a.current.png")));
+    assert.equal((await post({ name: "../x", w: 2, h: 1, marks })).status, 400);
+    assert.equal((await post({ name: "a", w: 3, h: 1, marks })).status, 400);
+  } finally {
+    s.close();
+  }
+});

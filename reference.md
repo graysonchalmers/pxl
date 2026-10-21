@@ -221,6 +221,21 @@ prints coordinates to fix:
 
 It also writes `_preview/<name>.lint.png` with orphans boxed in magenta and jaggies in cyan.
 
+### Feedback from the viewer
+
+In `serve`, **✎ annotate** (or `a`) turns the stage into a canvas over the finished asset: brush
+(markup colors, or click a palette swatch to paint "make it this color"), note (click a pixel, type
+a note), erase (or right-drag), size 1/2/4 px, shift-drag to pan. Marks persist in the browser until
+cleared. **send to Claude** posts them to the server, which writes to `<out>/_feedback/`:
+
+| File | Content |
+|---|---|
+| `<asset>.json` | `comment`, `notes` (`n, x, y, text, under: { hex, key }`), `paint` (per color: `hex`, `key`, `kind` markup/palette, `count`, `bbox`, `pixels`), `time` |
+| `<asset>.annotated.png` | The asset upscaled with the marks and numbered pins |
+| `<asset>.marks.png` / `<asset>.current.png` | The marks alone, and the asset as it was, both 1:1 |
+
+Only assets in the served file are accepted, sizes must match, and files go only to `_feedback/`.
+
 Outputs go to `<file dir>/out`: `sprites/<n>.png`, `scenes/<n>.png`, `<sheet>.png` + `<sheet>.json`
 (TexturePacker hash format: Phaser, Godot importers, ...), `_preview/<n>.png` (upscaled to
 ~768px, checkerboard behind transparency, pixel grid at scale ≥ 6 with every 8th line darker).
