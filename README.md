@@ -39,9 +39,23 @@ goes there) that adds tools aimed at one thing: **art that reads as hand-made pi
 - **`pxl lint`**: an art critic for built pixels. It flags orphan pixels, jaggies (doubled corners
   in 1-px lines), pillow shading, too many colors and near-duplicate colors, each with coordinates
   and a `_preview/<name>.lint.png` overlay. Agents run it before they call a sprite done.
+- **Annotate mode in the live viewer** (`✎ annotate` or `a`): paint over an asset (markup colors
+  point at things, palette colors mean "make it this color"), pin numbered notes to pixels, add a
+  comment, and press *send to Claude*. It writes `out/_feedback/<asset>.json` (every painted pixel,
+  every note with the pixel under it) and an annotated PNG, so you can say "check the feedback"
+  instead of describing where the problem is.
 
 The before/after is [`examples/polish.px.js`](examples/polish.px.js): `lint` flags the left
 mushroom for pillow shading and passes the right one.
+
+<p>
+  <img src="docs/gallery/eldritch.png" width="49%" alt="Pixel-art portrait of a turquoise Cthulhu-like creature with angry glowing red eyes and a beard of tentacles, in a pale ivory frame, a dark night sea behind it">
+</p>
+
+*The Watcher in the Frame* ([`showcase/eldritch.px.js`](showcase/eldritch.px.js), 130×160) was
+directed with annotate mode: the creature is a small 3D model rendered into pixels (ellipsoids
+shaded from their normals with `shades` ramps, tentacles as tubes) and every revision after the
+first round came from painted marks and notes.
 
 ## Quick start
 
