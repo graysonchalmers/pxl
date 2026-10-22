@@ -1,10 +1,11 @@
-import { type Color, TRANSPARENT } from "./color.ts";
+import { type Color, TRANSPARENT, pack } from "./color.ts";
 import { Img } from "./image.ts";
 import type { Palette, Resolved } from "./palette.ts";
 import { PxError } from "./errors.ts";
 import { glyph, lineWidth } from "./font.ts";
-import type { BumpOpts, LampOpts, PlaceOpts, ScatterOpts, TextOpts, Timeline, TilemapOpts, WireOpts } from "./model.ts";
+import type { BumpOpts, ImageOpts, IsoOpts, LampOpts, PlaceOpts, ScatterOpts, TextOpts, Timeline, TilemapOpts, WireOpts } from "./model.ts";
 import { bump, dirOf, setNormal } from "./normals.ts";
+import { type Rgba, quantize, resample } from "./quant.ts";
 import { bayer, colorList, gridRows, hash, inPoly, polyBounds, type Region, regionPred, rng } from "./util.ts";
 
 /** How a canvas reaches other assets. */
@@ -18,6 +19,8 @@ export interface Resolver {
   timeline(name: string, seed: number): Timeline | undefined;
   /** Names a reference can stand for: group members, glob matches, or itself. */
   candidates(name: string): string[];
+  /** A decoded raster image (the path was resolved when the op was written). */
+  loadImage(src: string): Rgba;
 }
 
 type Pred = (x: number, y: number) => boolean;
@@ -493,6 +496,66 @@ export class Canvas {
     });
   }
 
+  /** A PNG drawn at (x, y), resized and quantized to the palette (see ImageOpts). */
+  image(src: string, x: number, y: number, opts: ImageOpts = {}): void {
+    const img = this.res.loadImage(src);
+    let { w, h } = opts;
+    if (opts.scale !== undefined) {
+      if (!(opts.scale > 0)) throw new PxError(`image scale must be > 0, got ${opts.scale}`);
+      w = img.w * opts.scale; h = img.h * opts.scale;
+    } else if (w === undefined && h === undefined) { w = img.w; h = img.h; }
+    else if (w === undefined) w = (h! * img.w) / img.h;
+    else if (h === undefined) h = (w * img.h) / img.w;
+    if (!(w! > 0 && h! > 0)) throw new PxError("image w and h must be > 0");
+    const small = resample(img, w!, h!);
+    let data: Uint32Array;
+    if (opts.palette === false) {
+      // true colors: every opaque pixel as its own packed color
+      const thr = opts.alpha ?? 128;
+      data = new Uint32Array(small.w * small.h);
+      for (let i = 0; i < data.length; i++) if (small.rgba[i * 4 + 3] >= thr) data[i] = pack(small.rgba[i * 4], small.rgba[i * 4 + 1], small.rgba[i * 4 + 2]);
+    } else {
+      const keys = opts.palette === undefined ? [...this.pal.order] : colorList(opts.palette);
+      const cols: Color[] = [];
+      for (const k of keys) { const c = this.color(k); if (c !== null && c !== TRANSPARENT) cols.push(c); }
+      if (!cols.length) throw new PxError("image palette has no visible colors");
+      data = quantize(small, cols, { dither: opts.dither, alpha: opts.alpha });
+    }
+    this.put(new Img(small.w, small.h, data), x, y);
+  }
+
+  /**
+   * A 2:1 isometric block: x, y, z in tiles (x runs to the lower right, y to the lower left, z up),
+   * w × d × h in tiles, `c` the top color. Faces are filled polygons on pixel corners.
+   */
+  isobox(x: number, y: number, z: number, w: number, d: number, h: number, c: string, opts: IsoOpts = {}): void {
+    const s = opts.size ?? 16, [ox, oy] = opts.at ?? [0, 0];
+    if (!(s > 0)) throw new PxError(`isobox size must be > 0, got ${s}`);
+    const P = (X: number, Y: number, Z: number) => [ox + ((X - Y) * s) / 2, oy + ((X + Y) * s) / 4 - (Z * s) / 2];
+    const top = this.color(c);
+    const darker = (steps: number): Resolved => {
+      let col = top;
+      try { const m = this.pal.stepMap(-1); for (let i = 0; i < steps; i++) col = col === null ? null : m.get(col) ?? col; } catch { return top; }
+      return col;
+    };
+    const left = opts.left !== undefined ? this.color(opts.left) : darker(1);
+    const right = opts.right !== undefined ? this.color(opts.right) : darker(2);
+    const topC = opts.top !== undefined ? this.color(opts.top) : top;
+    const face = (pts: number[][], col: Resolved) => { if (col !== null) this.polyColor(pts.flat(), col); };
+    if (h > 0) {
+      face([P(x, y + d, z), P(x + w, y + d, z), P(x + w, y + d, z + h), P(x, y + d, z + h)], left);
+      face([P(x + w, y, z), P(x + w, y + d, z), P(x + w, y + d, z + h), P(x + w, y, z + h)], right);
+    }
+    face([P(x, y, z + h), P(x + w, y, z + h), P(x + w, y + d, z + h), P(x, y + d, z + h)], topC);
+  }
+
+  /** poly() with an already-resolved color. */
+  private polyColor(pts: number[], col: Color): void {
+    const inside = inPoly(pts), b = polyBounds(pts);
+    for (let y = Math.floor(b.y0); y < Math.ceil(b.y1); y++)
+      for (let x = Math.floor(b.x0); x < Math.ceil(b.x1); x++) if (inside(x, y)) this.plot(x, y, col);
+  }
+
   /** Text in the built-in 3x5 font. */
   text(x: number, y: number, s: string, c: string, opts: TextOpts = {}): void {
     s = String(s);
@@ -530,7 +593,7 @@ export function frameStart(tl: Timeline, n: number): number {
 export const OPS = [
   "px", "rect", "box", "line", "hline", "vline", "ellipse", "circ", "ring", "poly", "fill",
   "dither", "grad", "noise", "recolor", "shade", "light",
-  "stamp", "tile", "pattern", "tilemap", "scatter", "grid", "wire", "text", "lamp", "bump", "normals",
+  "stamp", "tile", "pattern", "tilemap", "scatter", "grid", "wire", "text", "lamp", "bump", "normals", "image", "isobox",
 ] as const;
 export type OpName = (typeof OPS)[number];
 

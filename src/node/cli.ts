@@ -1,4 +1,5 @@
 // pxl command line.
+import { writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { PxError, wrap } from "../core/errors.ts";
 import { ascii, preview } from "../core/render.ts";
@@ -6,6 +7,7 @@ import { lint } from "../core/lint.ts";
 import { loadProject } from "./load.ts";
 import { writeOutputs, writePng } from "./output.ts";
 import { serve } from "./server.ts";
+import { traceFile } from "./trace.ts";
 
 const USAGE = `pxl — pixel-art DSL
 
@@ -21,6 +23,10 @@ const USAGE = `pxl — pixel-art DSL
       with coordinates; writes out/_preview/<name>.lint.png marking the pixels (default: every asset).
   pxl list  <art.px.js>
       List assets, groups and sheets with their source locations.
+  pxl trace <image.png> [--w N | --h N | --scale S] [--colors 16 | --palette pico8] [--dither 0..1]
+            [--name traced] [--out FILE.px.js]
+      Turn a PNG (photo, render, reference) into pxl source: an extracted or built-in palette plus a
+      grid string, with the fidelity of the result. Default out: <image dir>/<image name>.px.js.
 
 Art files may be .js or .ts. Default out dir: <art file dir>/out.`;
 
@@ -33,6 +39,12 @@ interface Args {
   scale?: number;
   preview?: boolean;
   port?: number;
+  w?: number;
+  h?: number;
+  colors?: number;
+  palette?: string;
+  dither?: number;
+  name?: string;
 }
 
 function parse(argv: string[]): Args {
@@ -49,6 +61,12 @@ function parse(argv: string[]): Args {
     else if (v === "--only") a.only = val().split(",").map((s) => s.trim()).filter(Boolean);
     else if (v === "--scale") a.scale = Number(val());
     else if (v === "--port") a.port = Number(val());
+    else if (v === "--w") a.w = Number(val());
+    else if (v === "--h") a.h = Number(val());
+    else if (v === "--colors") a.colors = Number(val());
+    else if (v === "--palette") a.palette = val();
+    else if (v === "--dither") a.dither = Number(val());
+    else if (v === "--name") a.name = val();
     else if (v === "--no-preview") a.preview = false;
     else if (v === "-h" || v === "--help") a.cmd = "help";
     else if (v.startsWith("--")) throw new PxError(`unknown flag ${v}\n\n${USAGE}`);
@@ -110,6 +128,14 @@ export async function main(argv: string[]): Promise<number> {
           }
         }
         console.log(`${total} finding${total === 1 ? "" : "s"} in ${names.length} asset${names.length === 1 ? "" : "s"}`);
+        return 0;
+      }
+      case "trace": {
+        const out = typeof a.out === "string" ? resolve(a.out) : file.replace(/\.[^./]+$/, "") + ".px.js";
+        const t = traceFile(file, { w: a.w, h: a.h, scale: a.scale, colors: a.colors, palette: a.palette, dither: a.dither, name: a.name });
+        writeFileSync(out, t.source);
+        console.log(`trace ${t.w}x${t.h}: ${t.colors} colors -> ${out}`);
+        console.log(`fidelity: mean error ${t.fit.meanError}/255, ${(t.fit.close * 100).toFixed(1)}% of pixels within 16 of the image`);
         return 0;
       }
       case "list": {

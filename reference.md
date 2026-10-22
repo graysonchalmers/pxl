@@ -54,7 +54,7 @@ sheet globs.
 | `bg` | Scene background color. |
 | `mx: true` | Mirror the left half onto the right after all items. Inferred width doubles (write half a row). `mx: "c"`: odd width, shared center column. `my` likewise vertically. |
 | `swap: { g: "r" }` | Recolor after drawing. |
-| `flip: "x" \| "y" \| "xy"`, `rot: 90 \| 180 \| 270` | Transform. |
+| `flip: "x" \| "y" \| "xy"`, `rot: deg` | Transform, clockwise. Multiples of 90 are exact; any other angle resamples about the center (a pixel is kept where paint covers about a third of it, so 1-px lines stay connected) and grows the canvas to fit. |
 | `outline: "k"` | 1px outline around opaque pixels; **grows the canvas 1px on every side**. `outline8` also fills diagonals. |
 | `selout: "k"` | **Selective outline**: like `outline`, but each outline pixel takes the color it touches two ramp steps darker, so the line follows the shading (soft on lit sides, deep in shadow). Colors with no ramp get `"k"`. Pair it with `shades`. |
 | `crop: true` | Trim to opaque bounds. |
@@ -89,6 +89,12 @@ Post-processing order: mirror → swap → flip → rot → outline → selout �
 | `fill(x, y, c)` | 4-connected flood fill |
 | `wire(x0, y0, x1, y1, sag, c, { hang?, every = 6, start?, ...placement })` | sagging cable; `hang` stamps an asset/group under it every `every` px (string lights) |
 | `text(x, y, "str", c, { scale = 1, gap = 1, lead = 1, align: "l"\|"c"\|"r", shadow? })` | built-in 3×5 font: A-Z 0-9 and common punctuation, `\n` for lines |
+| `isobox(x, y, z, w, d, h, c, { size = 16, at = [0, 0], top, left, right })` | 2:1 isometric block: `x`, `y`, `z` and `w × d × h` in tiles (x runs to the lower right, y to the lower left, z up), `size` = tile width in px, `at` = screen position of the world origin. Top is `c`; left and right default to one and two ramp steps darker. `iso(x, y, z, size, at)` returns the screen point of a world point, for stamping onto the blocks. |
+
+### Images
+| Op | Notes |
+|---|---|
+| `image("ref.png", x, y, { w, h, scale, palette, dither = 0, alpha = 128 })` | a PNG (photo, reference, a kiln / vex render, another tool's output) drawn at (x, y), resized (`w` and/or `h` in px, or `scale` as a fraction; area-averaged when shrinking) and quantized to the palette: every pixel becomes the nearest color (in OKLab) among `palette` keys (`"kgGw"` or a list; default every key; `false` keeps the true colors). `dither` 0..1 adds an ordered dither; pixels under `alpha` are transparent. Paths are relative to the art file. Clips, layers and lighting apply as to any op. |
 
 ### Texture and tone
 | Op | Notes |
@@ -206,7 +212,14 @@ node <pxl>/bin/pxl.js serve <file> [--port 4321] [--out DIR | --no-out] [--no-pr
 node <pxl>/bin/pxl.js ascii <file> <name>
 node <pxl>/bin/pxl.js list  <file>
 node <pxl>/bin/pxl.js lint  <file> [name ...] [--no-preview]
+node <pxl>/bin/pxl.js trace <image.png> [--w N | --h N | --scale S] [--colors 16 | --palette pico8] [--dither 0..1] [--name traced] [--out FILE.px.js]
 ```
+
+`trace` turns a PNG into pxl source: the image is resized, its palette extracted (`--colors`, k-means in
+OKLab, dark to light) or snapped to a built-in one (`--palette`), and written as `use([...])` plus one
+grid string, which is rebuilt and compared with the image (it prints the mean color error and the share
+of pixels within 16 per channel). The result is an ordinary art file: patch pixels with `grid()`, recolor
+with `swap`, stamp it into scenes, or use it as a `base`.
 
 `lint` critiques built pixels (every exported asset by default, the first frame of anims) and
 prints coordinates to fix:

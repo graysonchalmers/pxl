@@ -48,7 +48,8 @@ export interface AssetOpts {
   my?: boolean | "c";
   swap?: Record<string, string>;
   flip?: "x" | "y" | "xy";
-  rot?: 90 | 180 | 270;
+  /** Clockwise degrees. Multiples of 90 are exact; other angles resample (nearest) and grow the canvas. */
+  rot?: number;
   outline?: string;
   outline8?: string;
   /** Selective outline: each outline pixel is the bordering color two ramp steps darker (this color otherwise). */
@@ -121,7 +122,8 @@ export interface SheetDef {
 /** Options for stamp / tile / pattern / tilemap / scatter / wire hangs. */
 export interface PlaceOpts {
   flip?: "x" | "y" | "xy";
-  rot?: 90 | 180 | 270;
+  /** Clockwise degrees (any angle; multiples of 90 are exact). */
+  rot?: number;
   swap?: Record<string, string>;
   /** Random flips per placement. */
   rflip?: "x" | "y" | "xy";
@@ -225,6 +227,33 @@ export interface GlowOpts {
   bands?: number;
   /** Ramp mode: step neighbours up to this many shades lighter along the ramps (stays in palette). */
   ramp?: number;
+}
+
+/** Options of image(src, x, y, opts): a PNG quantized to the palette. */
+export interface ImageOpts {
+  /** Target size in px; one of them keeps the aspect ratio. Default: the image's own size. */
+  w?: number;
+  h?: number;
+  /** Size as a fraction of the image (0.25 = quarter), instead of w / h. */
+  scale?: number;
+  /** Keys to quantize to ("kgGw" or a list); default every key in the palette; false = keep the true colors. */
+  palette?: string | string[] | false;
+  /** Ordered dither strength 0..1 (default 0). */
+  dither?: number;
+  /** Alpha threshold 0..255 (default 128). */
+  alpha?: number;
+}
+
+/** Options of isobox(x, y, z, w, d, h, c, opts): a 2:1 isometric block. */
+export interface IsoOpts {
+  /** Tile width in px (default 16): one tile is `size` wide and `size / 2` tall on screen. */
+  size?: number;
+  /** Screen position of world origin (0, 0, 0). */
+  at?: [number, number];
+  /** Face colors: top defaults to `c`, left and right to one and two ramp steps darker (or `c`). */
+  top?: string;
+  left?: string;
+  right?: string;
 }
 
 export interface TextOpts {

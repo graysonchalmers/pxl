@@ -85,6 +85,13 @@ sheet("chars", ["slime*", "chest"], { pad: 1 })
 - **Color**: `shades("1234", "#c8323c")` makes a hue-shifted ramp (cool shadows, warm lights) as
   new keys, already wired for `shade`/`light`. Prefer it to picking ramp colors by hand.
   `selout: "k"` instead of `outline` draws the outline in each neighbor's darker shade.
+- **From an image**: `image("ref.png", x, y, { w: 64, palette: "kgGw", dither: 0.3 })` draws a PNG
+  (photo, reference, a render from kiln or vex) resized and quantized to palette keys, so any picture
+  becomes pixel art in the file's own colors. `PXL trace photo.png --w 64 --colors 12` writes a whole
+  art file (extracted palette + grid string) and reports how close it is; edit it like hand-drawn art.
+- **Isometric**: `isobox(x, y, z, w, d, h, "c", { size: 16, at: [ox, oy] })` draws a 2:1 block (top,
+  left and right faces shaded from the ramps); `iso(x, y, z, size, at)` gives the screen point for
+  stamping props onto it. `rot` takes any angle (8-direction bullets, wheels, fallen props).
 - **Glow**: `glow("zgQ", { r: 6, strength: 0.5 })` directly in a sprite/scene body gives every pixel
   of those keys a halo (flames, potions, moons, neon); `ramp: 2` instead stays in the palette.
   Give glowing things their own keys so nothing else lights up, or limit it with `where`.

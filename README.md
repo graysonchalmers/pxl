@@ -112,6 +112,8 @@ pxl serve <art.px.js> [--port 4321] [--out DIR | --no-out] [--no-preview]
 pxl ascii <art.px.js> <name>     print an asset as palette keys with x/y rulers
 pxl list  <art.px.js>            list assets, groups and sheets with source locations
 pxl lint  <art.px.js> [name ...] critique pixels: orphans, jaggies, pillow shading, palette
+pxl trace <image.png> [--w N] [--colors 16 | --palette pico8] [--dither 0.3]
+                                 turn a PNG into an art file: extracted palette + grid, with its fidelity
 ```
 
 `pxl` means `node bin/pxl.js` in a clone, or `npx github:uilianks/pxl`. Art files can be `.js` or
@@ -128,6 +130,9 @@ pxl lint  <art.px.js> [name ...] critique pixels: orphans, jaggies, pillow shadi
 - **Scenes**: layers, cast-shadow and light layers, per-layer PNG export.
 - **Animation**: frames as patches over a base sprite → strips + JSON tags + GIF.
 - **Lighting** (optional): lamps, glow, normal-based relief (see [`lighting.md`](lighting.md)).
+- **Images in, pixel art out**: `image("photo.png", x, y, { w: 64, palette: "kgGw", dither: 0.3 })` draws
+  any PNG (a photo, a reference, a kiln or vex render) quantized to the palette; `pxl trace` writes a whole
+  art file from one. `isobox` draws 2:1 isometric blocks; `rot` takes any angle.
 - **Errors** point at `file:line:col` and the asset/layer/op path, with "did you mean…" hints.
 
 Full API: [`reference.md`](reference.md). Agent workflow and essentials: [`SKILL.md`](SKILL.md).

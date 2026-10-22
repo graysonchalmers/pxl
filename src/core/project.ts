@@ -9,6 +9,7 @@ import {
 } from "./model.ts";
 import { Palette } from "./palette.ts";
 import { type ShadeOpts, parseHex, shadeRamp, toHex } from "./color.ts";
+import type { Rgba } from "./quant.ts";
 import { Trace } from "./trace.ts";
 import { globRe, rng } from "./util.ts";
 
@@ -49,6 +50,8 @@ export const SIGNATURES: Record<string, string> = {
   normals: "x:n y:n str:s",
   lighting: "?opts:o",
   glow: "keys:S ?opts:o",
+  image: "src:s x:n y:n ?opts:o",
+  isobox: "x:n y:n z:n w:n d:n h:n c:c ?opts:o",
 };
 
 /** Allowed option keys of ops whose last argument is an options object. */
@@ -57,6 +60,8 @@ const OP_OPTS: Record<string, string[]> = {
   bump: ["w", "depth", "on", "where"],
   lighting: ["cell", "ambient", "ambientColor", "sky", "skyColor", "skyReach", "block", "smooth", "emit", "shape", "relief", "skyDir"],
   glow: ["where", "r", "strength", "color", "bands", "ramp"],
+  image: ["w", "h", "scale", "palette", "dither", "alpha"],
+  isobox: ["size", "at", "top", "left", "right"],
 };
 
 const ASSET_OPTS: Record<AssetKind, string[]> = {
@@ -138,6 +143,11 @@ export class Project implements BuildCtx {
   pal: Palette = Palette.builtin("pico8");
   /** Set by a loader to support include(). */
   includeHook?: (path: string) => void;
+  /** Set by a loader: resolves a path written in an art file (image sources) against that file. */
+  pathHook: (path: string) => string = (p) => p;
+  /** Set by a loader: reads and decodes an image file (PNG) by its resolved path. */
+  imageHook?: (path: string) => Rgba;
+  private images = new Map<string, Rgba>();
 
   private cache = new Map<string, BuildOut>();
   /** Timelines gathered from animated assets placed by the builds in progress (innermost last). */
@@ -254,6 +264,9 @@ export class Project implements BuildCtx {
       this.includeHook(path);
     };
     env.rng = (seed?: number) => rng(seed);
+    /** Screen position of an isometric world point (x, y, z in tiles), the same projection isobox uses. */
+    env.iso = (x: number, y: number, z = 0, size = 16, at: [number, number] = [0, 0]) =>
+      [at[0] + ((x - y) * size) / 2, at[1] + ((x + y) * size) / 4 - (z * size) / 2];
 
     for (const name of [...OPS, "clip", "lighting", "glow"]) {
       env[name] = (...args: unknown[]): Op => {
@@ -262,12 +275,24 @@ export class Project implements BuildCtx {
           checkArgs(name, args);
           const o = args[args.length - 1];
           if (OP_OPTS[name] && isPlainObject(o)) checkKeys(name, o, OP_OPTS[name]);
+          // image paths are relative to the file that names them: resolve them where they are written
+          if (name === "image") args = [this.pathHook(args[0] as string), ...args.slice(1)];
         } catch (e) { throw wrap(e).within(name, loc); }
         if (name === "clip") checkItems("clip", args.slice(1), loc);
         return { __op: true, name, args, loc };
       };
     }
     return env;
+  }
+
+  /** A decoded image by resolved path, cached for the project's lifetime. */
+  loadImage(src: string): Rgba {
+    const hit = this.images.get(src);
+    if (hit) return hit;
+    if (!this.imageHook) throw new PxError("image() is not available here (no image loader)");
+    const img = this.imageHook(src);
+    this.images.set(src, img);
+    return img;
   }
 
   // ---------------------------------------------------------------- resolving

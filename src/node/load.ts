@@ -6,6 +6,14 @@ import * as vm from "node:vm";
 import { stripTypeScriptTypes } from "node:module";
 import { PxError, wrap } from "../core/errors.ts";
 import { Project, type ProjectOptions } from "../core/project.ts";
+import { decodePng } from "./png.ts";
+
+/** Read and decode a PNG for image(); a missing file names the path it tried. */
+function readImage(path: string) {
+  let bytes: Buffer;
+  try { bytes = readFileSync(path); } catch { throw new PxError(`cannot read image '${path}'`); }
+  try { return decodePng(bytes); } catch (e) { throw wrap(e).within(`image '${path.replace(/^.*[\\/]/, "")}'`); }
+}
 
 function compile(code: string, file: string): string {
   // Type stripping keeps every line and column in place, so error locations stay exact.
@@ -35,6 +43,8 @@ export function loadProject(file: string, opts: ProjectOptions = {}): Project {
     }
   };
   p.includeHook = (path) => run(isAbsolute(path) ? path : resolve(dirname(stack[stack.length - 1]), path));
+  p.pathHook = (path) => (isAbsolute(path) ? path : resolve(dirname(stack[stack.length - 1] ?? resolve(file)), path));
+  p.imageHook = readImage;
   run(file);
   return p;
 }
@@ -44,6 +54,7 @@ export function loadSource(src: string, name = "art.px.js", opts: ProjectOptions
   const p = new Project(opts);
   const ctx = vm.createContext({ ...p.env(), console });
   p.addFile(name);
+  p.imageHook = readImage;
   try {
     vm.runInContext(compile(src, name), ctx, { filename: name });
   } catch (e) {

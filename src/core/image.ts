@@ -123,12 +123,13 @@ export class Img {
     return this.moveLamps(o, (x, y) => [fx ? this.w - 1 - x : x, fy ? this.h - 1 - y : y]);
   }
 
-  /** Clockwise rotation by a multiple of 90 degrees. */
+  /** Clockwise rotation: multiples of 90 are exact; any other angle resamples (nearest) into a canvas grown to fit. */
   rot(deg: number): Img {
+    if (!Number.isFinite(deg)) throw new Error(`rot must be a number of degrees, got ${deg}`);
     const d = ((deg % 360) + 360) % 360;
     if (d === 0) return this.copy();
     if (d === 180) return this.flip("xy");
-    if (d !== 90 && d !== 270) throw new Error(`rot must be a multiple of 90, got ${deg}`);
+    if (d !== 90 && d !== 270) return this.rotateFree(d);
     const o = new Img(this.h, this.w);
     for (let y = 0; y < this.h; y++)
       for (let x = 0; x < this.w; x++) {
@@ -138,6 +139,47 @@ export class Img {
         if (this.norm) Img.moveNorm(this.norm, y * this.w + x, o.normals(), ty * o.w + tx, 1, 1, d);
       }
     return this.moveLamps(o, (x, y) => (d === 90 ? [this.h - 1 - y, x] : [y, this.w - 1 - x]));
+  }
+
+  /** Rotation by an arbitrary clockwise angle about the center; the canvas grows to the rotated bounds. */
+  private rotateFree(d: number): Img {
+    const a = (d * Math.PI) / 180, cos = Math.cos(a), sin = Math.sin(a);
+    const W = Math.max(1, Math.ceil(Math.abs(this.w * cos) + Math.abs(this.h * sin) - 1e-6));
+    const H = Math.max(1, Math.ceil(Math.abs(this.w * sin) + Math.abs(this.h * cos) - 1e-6));
+    const o = new Img(W, H);
+    const cx = this.w / 2, cy = this.h / 2, ox = W / 2, oy = H / 2;
+    const hits: number[] = [], hitJ: number[] = [];
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        // A 4×4 grid of sub-samples per destination pixel is mapped back into the source (rotate by
+        // -d): the pixel is set when paint covers more than ~30% of it (so a 1-px line keeps its
+        // ends and stays connected without doubling up) and takes the most frequent color.
+        hits.length = 0; hitJ.length = 0;
+        for (let k = 0; k < 16; k++) {
+          const dx = x + ((k & 3) + 0.5) / 4 - ox, dy = y + ((k >> 2) + 0.5) / 4 - oy;
+          const sx = Math.floor(cx + dx * cos + dy * sin), sy = Math.floor(cy - dx * sin + dy * cos);
+          if (!this.inside(sx, sy)) continue;
+          const j = sy * this.w + sx, c = this.data[j];
+          if (c !== TRANSPARENT) { hits.push(c); hitJ.push(j); }
+        }
+        if (hits.length < 5) continue;
+        let best = 0, bestN = 0;
+        for (let k = 0; k < hits.length; k++) {
+          let n = 0;
+          for (const c of hits) if (c === hits[k]) n++;
+          if (n > bestN) { bestN = n; best = k; }
+        }
+        const i = y * W + x, j = hitJ[best];
+        o.data[i] = hits[best];
+        if (this.norm && this.norm[j * 3 + 2]) {
+          const nx = this.norm[j * 3], ny = this.norm[j * 3 + 1], n = o.normals();
+          n[i * 3] = Math.round(nx * cos - ny * sin); n[i * 3 + 1] = Math.round(nx * sin + ny * cos); n[i * 3 + 2] = this.norm[j * 3 + 2];
+        }
+      }
+    return this.moveLamps(o, (x, y) => {
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+      return [Math.floor(ox + dx * cos - dy * sin), Math.floor(oy + dx * sin + dy * cos)];
+    });
   }
 
   /** Copy the left half onto the right ("x") or the top onto the bottom ("y"), in place. */

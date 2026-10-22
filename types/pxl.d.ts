@@ -11,7 +11,7 @@ declare global {
   type PxItem = string | PxOp | PxLayer | ((c: PxCanvas) => void);
 
   interface PxPlace {
-    flip?: "x" | "y" | "xy"; rot?: 90 | 180 | 270; swap?: Record<string, PxColor>;
+    flip?: "x" | "y" | "xy"; rot?: number; swap?: Record<string, PxColor>;
     rflip?: "x" | "y" | "xy"; rswap?: Record<string, PxColor>[]; seed?: number; reseed?: boolean | number;
     /** Animated assets: freeze on frame n / start later (ms) / random start. */
     frame?: number; delay?: number; rdelay?: boolean;
@@ -20,9 +20,11 @@ declare global {
   interface PxTilemap extends PxPlace { map: Record<string, string>; size?: number; w?: number; h?: number; x?: number; y?: number }
   interface PxWire extends PxPlace { hang?: string; every?: number; start?: number }
   interface PxText { scale?: number; gap?: number; lead?: number; align?: "l" | "c" | "r"; shadow?: PxColor }
+  interface PxImage { w?: number; h?: number; scale?: number; palette?: string | string[] | false; dither?: number; alpha?: number }
+  interface PxIso { size?: number; at?: [number, number]; top?: PxColor; left?: PxColor; right?: PxColor }
   interface PxAssetOpts {
     w?: number; h?: number; base?: string; mx?: boolean | "c"; my?: boolean | "c"; swap?: Record<string, PxColor>;
-    flip?: "x" | "y" | "xy"; rot?: 90 | 180 | 270; outline?: PxColor; outline8?: PxColor; selout?: PxColor; crop?: boolean; layers?: boolean;
+    flip?: "x" | "y" | "xy"; rot?: number; outline?: PxColor; outline8?: PxColor; selout?: PxColor; crop?: boolean; layers?: boolean;
   }
   interface PxSceneOpts extends PxAssetOpts { w: number; h: number; bg?: PxColor }
   interface PxAnimOpts extends PxAssetOpts { fps?: number; frames?: number; loop?: boolean }
@@ -79,6 +81,8 @@ declare global {
     lamp(x: number, y: number, opts?: PxLamp): void;
     bump(shape?: PxBumpShape, opts?: PxBump): void;
     normals(x: number, y: number, str: string): void;
+    image(src: string, x: number, y: number, opts?: PxImage): void;
+    isobox(x: number, y: number, z: number, w: number, d: number, h: number, c: PxColor, opts?: PxIso): void;
   }
 
   function use(palette: "pico8" | "sweetie16" | "db16" | "endesga32" | "gray8" | (string | number)[]): void;
@@ -98,6 +102,8 @@ declare global {
   function sheet(name: string, entries: string[], opts?: { cols?: number; pad?: number }): void;
   function include(path: string): void;
   function rng(seed?: number): () => number;
+  /** Screen point of an isometric world point (tiles), the projection isobox uses. */
+  function iso(x: number, y: number, z?: number, size?: number, at?: [number, number]): [number, number];
   function clip(where: PxRegion, ...items: PxItem[]): PxOp;
 
   function px(x: number, y: number, c: PxColor): PxOp;
@@ -128,6 +134,8 @@ declare global {
   function lamp(x: number, y: number, opts?: PxLamp): PxOp;
   function bump(shape?: PxBumpShape, opts?: PxBump): PxOp;
   function normals(x: number, y: number, str: string): PxOp;
+  function image(src: string, x: number, y: number, opts?: PxImage): PxOp;
+  function isobox(x: number, y: number, z: number, w: number, d: number, h: number, c: PxColor, opts?: PxIso): PxOp;
   function lighting(opts?: PxLighting): PxOp;
   function glow(keys: string | string[], opts?: PxGlow): PxOp;
 }
