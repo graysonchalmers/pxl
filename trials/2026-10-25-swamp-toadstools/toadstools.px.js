@@ -33,5 +33,19 @@ anim("glow_toadstools_idle", { w: 32, h: 32, frames: 8, fps: 8, outline: "k" }, 
   }
 })
 
-// inventory item: same clump cropped to its pixels so it fills a slot
-sprite("glow_toadstools_item", { base: "glow_toadstools", crop: true })
+// inventory item: hand-drawn 14x14 + outline = 16x16, fills a pixel slot edge to edge
+sprite("glow_toadstools_item", { w: 14, h: 14, outline: "k" }, `
+  ...ccccc....e.
+  ..cllcccc.....
+  .cllcccccc....
+  ccccccccccc...
+  CCCCCCCCCCC...
+  ....smS..ccc..
+  ....smS.cllcc.
+  ....smS.CCCCC.
+  .cc.smS...sS..
+  clcCsmS...sS..
+  CCC.smS...sS..
+  .sS.smS...sS..
+  gggggggggggggg
+  .GGGGGGGGGGGG.`)
