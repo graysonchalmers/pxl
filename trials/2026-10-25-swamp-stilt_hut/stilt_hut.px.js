@@ -35,5 +35,19 @@ anim("stilt_hut_dry_idle", { w: 34, h: 46, frames: 8, fps: 8, outline: "k" }, hu
   if (f > 0.6) c.rect(19, 17, 2, 4, "y"); else if (f < -0.8) c.rect(22, 17, 2, 4, "w")
 })
 
-// inventory item: the hut without water, cropped to its pixels so it fills a slot
-sprite("stilt_hut_item", { w: 34, h: 46, outline: "k", crop: true }, hut)
+// inventory item: hand-drawn 14x14 + outline = 16x16, fills a pixel slot edge to edge
+sprite("stilt_hut_item", { w: 14, h: 14, outline: "k" }, `
+  ......tt......
+  ....tttttt....
+  ..tttttttttt..
+  TTTTTTTTTTTTTT
+  .wWwdwWwYYwWw.
+  .wWwdwWwYYwWw.
+  .wWwdwWwwWwWw.
+  WWWWWWWWWWWWWW
+  dddddddddddddd
+  .b..dWWd...b..
+  .b..d..d...b..
+  .b...dWWd..b..
+  .b...d..d..b..
+  .B...dWWd..B..`)
