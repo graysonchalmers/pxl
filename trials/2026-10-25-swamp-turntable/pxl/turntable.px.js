@@ -50,3 +50,28 @@ const slotSpin = (name, src, palette) => anim(name, { w: 14, h: 14, fps: 8, outl
   ...[...Array(N)].map((_, i) => frame(image(`../keyed/${src}/f${String(i + 1).padStart(2, "0")}.png`, 0, 0, { w: 14, h: 14, palette }))))
 slotSpin("stilt_hut_turntable_slot", "stilt_hut", "tTwWbBdDy")
 slotSpin("glow_toadstools_turntable_slot", "glow_toadstools", "ceCsSgG")
+
+// 24x24 slot set (22x22 + outline): each item's still is frame 1 of its own turntable, so still and spin match
+const S24 = { w: 22, h: 22, outline: "k" }
+const keyed = (src, i) => `../keyed/${src}/f${String(i + 1).padStart(2, "0")}.png`
+// [source frames, palette, zoom]: zoom crops the empty margins of the kiln frames (the canvas clips the overflow)
+const PAL24 = { mangrove: ["mangrove_roots", "LlfFGbBhdD", 1.2], stilt_hut: ["stilt_hut", "tTwWbBdDy", 1.2], glow_toadstools: ["glow_toadstools", "ceCsSgG", 1.45] }
+for (const [name, [src, palette, z]] of Object.entries(PAL24)) {
+  const sz = Math.round(22 * z), o = -Math.round((sz - 22) / 2), img = (i) => image(keyed(src, i), o, o, { w: sz, h: sz, palette })
+  anim(`${name}_spin24`, { ...S24, fps: 8 }, ...[...Array(N)].map((_, i) => frame(img(i))))
+  sprite(`${name}_item24`, S24, img(0))
+}
+// lantern, hand-faked at 24: frame i of N
+const lantern24 = (c, i) => {
+  const a = (i / N) * TAU, ca = Math.cos(a), sa = Math.sin(a), px = 8
+  const tip = px + 1 + Math.round(ca * 9), lx = tip - 2
+  const lantern = () => { c.vline(tip, 2, 2, "i"); c.rect(lx, 4, 5, 1, "I"); c.rect(lx, 5, 5, 6, "i")
+    c.rect(lx + 1, 6, 3, 4, sa > 0 ? "y" : "Y"); if (sa > 0) c.px(lx + 2, 7, "u"); c.rect(lx, 11, 5, 1, "I") }
+  if (sa < 0) lantern()
+  c.rect(px, 1, 3, 19, "b"); c.vline(px + (ca > 0 ? 0 : 2), 1, 19, "h"); c.vline(px + (ca > 0 ? 2 : 0), 1, 19, "B")
+  c.rect(px - 3, 19, 9, 3, "d")
+  c.rect(Math.min(px + 1, tip), 0, Math.abs(tip - (px + 1)) + 1, 2, sa < 0 ? "D" : "d")
+  if (sa >= 0) lantern()
+}
+anim("lantern_post_spin24", { ...S24, frames: N, fps: 8 }, (c) => lantern24(c, c.frame))
+sprite("lantern_post_item24", S24, (c) => lantern24(c, 0))
