@@ -20,3 +20,6 @@ sprite("lantern_post", { w: 22, h: 40, outline: "k" }, lanternPost, (c) => lante
 
 anim("lantern_post_idle", { w: 22, h: 40, frames: 8, fps: 8, outline: "k" }, lanternPost,
   (c) => lanternFlame(c, 0.5 + 0.5 * Math.sin(c.phase * TAU * 2) * Math.cos(c.phase * TAU * 3)))
+
+// inventory item: cropped to its pixels so it fills a slot
+sprite("lantern_post_item", { base: "lantern_post", crop: true })

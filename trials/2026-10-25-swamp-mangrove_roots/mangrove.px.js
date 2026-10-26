@@ -26,3 +26,6 @@ sprite("mangrove", { w: 40, h: 56, outline: "k" }, mangroveRoots, (c) => mangrov
 // idle: canopy sways a pixel each way
 anim("mangrove_idle", { w: 40, h: 56, frames: 8, fps: 8, outline: "k" }, mangroveRoots,
   (c) => mangroveCanopy(c, Math.round(Math.sin(c.phase * TAU))))
+
+// inventory item: cropped to its pixels so it fills a slot
+sprite("mangrove_item", { base: "mangrove", crop: true })

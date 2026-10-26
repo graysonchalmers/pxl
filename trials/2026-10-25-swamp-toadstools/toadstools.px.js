@@ -32,3 +32,6 @@ anim("glow_toadstools_idle", { w: 32, h: 32, frames: 8, fps: 8, outline: "k" }, 
     c.px(x0 + Math.round(Math.sin(p * TAU) * 1.5), Math.round(14 - p * 12), p < 0.7 ? "e" : "l")
   }
 })
+
+// inventory item: same clump cropped to its pixels so it fills a slot
+sprite("glow_toadstools_item", { base: "glow_toadstools", crop: true })
