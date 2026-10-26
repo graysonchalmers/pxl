@@ -28,3 +28,9 @@ anim("stilt_hut_idle", { w: 34, h: 50, frames: 8, fps: 8, outline: "k" }, (c) =>
   const f = Math.sin(c.phase * TAU * 2) + Math.sin(c.phase * TAU * 3)
   if (f > 0.6) c.rect(19, 17, 2, 4, "y"); else if (f < -0.8) c.rect(22, 17, 2, 4, "w")
 })
+
+// water-less variant for placing in scenes: stilts end bare, the scene supplies the water
+anim("stilt_hut_dry_idle", { w: 34, h: 46, frames: 8, fps: 8, outline: "k" }, hut, (c) => {
+  const f = Math.sin(c.phase * TAU * 2) + Math.sin(c.phase * TAU * 3)
+  if (f > 0.6) c.rect(19, 17, 2, 4, "y"); else if (f < -0.8) c.rect(22, 17, 2, 4, "w")
+})
