@@ -28,3 +28,19 @@ anim("lantern_turntable", { w: 30, h: 44, frames: N, fps: 8, outline: "k" }, (c)
   c.rect(Math.min(px + 1, tip), 2, armLen + 1, 2, sa < 0 ? "D" : "d") // arm, darker when it points away
   if (sa >= 0) lantern()
 })
+
+// slot-sized versions: 14x14 + outline = 16x16, same as the inventory item sprites
+anim("mangrove_turntable_slot", { w: 14, h: 14, fps: 8, outline: "k" },
+  ...[...Array(N)].map((_, i) => frame(image(`../keyed/mangrove_roots/f${String(i + 1).padStart(2, "0")}.png`, 1, 0,
+    { h: 14, palette: "LlfFGbBhdD" }))))
+
+anim("lantern_turntable_slot", { w: 14, h: 14, frames: N, fps: 8, outline: "k" }, (c) => {
+  const a = (c.frame / N) * TAU, ca = Math.cos(a), sa = Math.sin(a), px = 5
+  const tip = px + 1 + Math.round(ca * 6), lx = tip - 1
+  const lantern = () => { c.px(tip, 2, "i"); c.rect(lx, 3, 3, 1, "I"); c.rect(lx, 4, 3, 4, "i"); c.vline(lx + 1, 4, 4, sa > 0 ? "y" : "Y"); if (sa > 0) c.px(lx + 1, 5, "u"); c.rect(lx, 8, 3, 1, "I") }
+  if (sa < 0) lantern()
+  c.rect(px, 1, 2, 12, "b"); c.vline(px + (ca > 0 ? 0 : 1), 1, 12, "h")
+  c.rect(px - 2, 12, 6, 2, "d")
+  c.rect(Math.min(px + 1, tip), 0, Math.abs(tip - (px + 1)) + 1, 1, sa < 0 ? "D" : "d")
+  if (sa >= 0) lantern()
+})
