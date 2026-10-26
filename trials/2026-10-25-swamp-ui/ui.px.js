@@ -17,3 +17,5 @@ sprite("px_button_danger", { base: "px_button", swap: { g: "r", q: "d" } })
 sprite("px_bar_frame", { w: 24, h: 8, outline: "k" }, rect(0, 0, 24, 8, "b"), rect(2, 2, 20, 4, "k"))
 sprite("px_bar_hp", { w: 20, h: 6 }, rect(0, 0, 20, 6, "N"), hline(0, 0, 20, "n"), hline(0, 1, 20, "n"))
 sprite("px_bar_stamina", { base: "px_bar_hp", swap: { N: "A", n: "a" } })
+// slot 16x16, margin 4
+sprite("px_slot", { w: 16, h: 16, outline: "k" }, rect(0, 0, 16, 16, "b"), rect(2, 2, 12, 12, "M"), hline(2, 2, 12, "k"))
