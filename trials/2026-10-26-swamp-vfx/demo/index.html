@@ -11,7 +11,7 @@ h1{font-size:22px;margin:0 0 4px}p.sub{color:var(--dim);margin:0 0 16px}
 .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .tabs button{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font:inherit;cursor:pointer}
 .tabs button[aria-pressed=true]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
-.grid{display:grid;grid-template-columns:2fr 1fr;gap:12px}@media(max-width:640px){.grid{grid-template-columns:1fr}}
+.grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}@media(max-width:860px){.grid{grid-template-columns:1fr 1fr}.grid>.card:first-child{grid-column:1/-1}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}
 .card h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:0 0 8px;font-weight:600}
 canvas,.baked img{width:100%;image-rendering:pixelated;background:#1e2a1e;border-radius:6px;display:block}
@@ -22,7 +22,7 @@ input[type=range]{accent-color:var(--accent)}
 .note{color:var(--dim);font-size:13px;margin-top:8px}
 </style></head><body><main>
 <h1>Swamp Particles Lab</h1>
-<p class="sub">Live particles (left) vs the baked pxl loop (right). Click or tap the live canvas to burst. Sounds by chirp.</p>
+<p class="sub">Live JS particles vs two baked loops: hand-written pxl and vex <code>particles()</code> quantized to the same pixel palette. Click or tap the live canvas to burst. Sounds by chirp.</p>
 <div class="tabs" id="tabs"></div>
 <div class="grid">
  <div class="card"><h2>Live · JS canvas, 160×100 px</h2><canvas id="cv" width="160" height="100"></canvas>
@@ -30,6 +30,8 @@ input[type=range]{accent-color:var(--accent)}
   <label><input id="snd" type="checkbox" checked> Sound</label><span id="fps"></span></div></div>
  <div class="card"><h2>Baked · pxl GIF, 16 frames</h2><div class="baked"><img id="gif" alt=""></div>
   <p class="note" id="desc"></p></div>
+ <div class="card"><h2>Baked · vex particles(), quantized</h2><div class="baked"><img id="vgif" alt=""></div>
+  <p class="note">Emitter config (rate, burst, gravity, drag, size and colour over life), then snapped to the swamp ramps with no dither.</p></div>
 </div>
 </main><script>
 const P='#1e2a1e',RAMPS={yel:['#6b4a1a','#b8862a','#e8d24a','#fff6c0'],wat:['#2a4f9a','#4f8ad8','#9ad8e8','#e0f6fa'],smk:['#5c5e52','#8a8c7e','#a8aa9a','#c4c6b6'],grn:['#2a7a5a','#4fc08a','#7ae8a8','#e0fff0']}
@@ -49,7 +51,7 @@ const tabs=document.getElementById('tabs')
 for(const k in FX){const b=document.createElement('button');b.textContent=k;b.onclick=()=>pick(k);tabs.append(b)}
 const au={};function snd(k){if(!document.getElementById('snd').checked)return;(au[k]||=new Audio('a/fx_'+k+'.wav'));const a=au[k];if(FX[k].loop){a.loop=true;a.volume=.6;a.play().catch(()=>{})}else{const c=a.cloneNode();c.play().catch(()=>{})}}
 function stopLoops(){for(const k in au)if(FX[k].loop)au[k].pause()}
-function pick(k){cur=k;ps=[];rings=[];stopLoops();for(const b of tabs.children)b.setAttribute('aria-pressed',b.textContent===k);document.getElementById('gif').src='a/fx_'+k+'.gif';document.getElementById('desc').textContent=FX[k].d;try{localStorage.fx=k}catch(e){}}
+function pick(k){cur=k;ps=[];rings=[];stopLoops();for(const b of tabs.children)b.setAttribute('aria-pressed',b.textContent===k);document.getElementById('gif').src='a/fx_'+k+'.gif';document.getElementById('vgif').src='a/vx_'+k+'.gif';document.getElementById('desc').textContent=FX[k].d;try{localStorage.fx=k}catch(e){}}
 cnt.oninput=()=>document.getElementById('cn').textContent=cnt.value
 document.getElementById('snd').onchange=e=>{if(!e.target.checked)stopLoops()}
 cv.addEventListener('pointerdown',e=>{const b=cv.getBoundingClientRect(),x=(e.clientX-b.left)/b.width*160,y=(e.clientY-b.top)/b.height*100;FX[cur].spawn(x,y,+cnt.value);snd(cur)})
