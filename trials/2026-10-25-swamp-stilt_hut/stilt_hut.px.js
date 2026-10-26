@@ -2,7 +2,7 @@
 pal({ k: "#1e2018", b: "#86623e", B: "#6e5034", w: "#8a6a48", W: "#ccad84", d: "#5e4632",
   t: "#c8b26a", T: "#857238", y: "#ffe2a0", Y: "#ffc860", a: "#3f5a45", A: "#2c4032", r: "#6c8a70" })
 
-const TAU = Math.PI * 2
+var TAU = Math.PI * 2
 const hut = (c) => {
   for (const x of [6, 25]) { c.rect(x, 27, 3, 19, "b"); c.vline(x + 2, 27, 19, "B") }   // stilts
   c.rect(4, 26, 26, 2, "W"); c.hline(4, 28, 26, "d")                                       // deck
@@ -24,7 +24,7 @@ const water = (c, ph = 0) => {
 sprite("stilt_hut", { w: 34, h: 50, outline: "k" }, (c) => water(c), hut)
 
 // idle: window flickers, water ripples
-anim("stilt_hut_idle", { w: 34, h: 50, frames: 8, fps: 6, outline: "k" }, (c) => water(c, c.phase), hut, (c) => {
+anim("stilt_hut_idle", { w: 34, h: 50, frames: 8, fps: 8, outline: "k" }, (c) => water(c, c.phase), hut, (c) => {
   const f = Math.sin(c.phase * TAU * 2) + Math.sin(c.phase * TAU * 3)
   if (f > 0.6) c.rect(19, 17, 2, 4, "y"); else if (f < -0.8) c.rect(22, 17, 2, 4, "w")
 })

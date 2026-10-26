@@ -2,7 +2,7 @@
 pal({ k: "#1e2a24", g: "#6b5740", G: "#4a3c2c", s: "#cfc8ae", m: "#b4ad94", S: "#857e68",
   C: "#2e4a3e", c: "#4a8064", l: "#6fbf98", e: "#9fe8c8", w: "#e8fff4" })
 
-const TAU = Math.PI * 2
+var TAU = Math.PI * 2
 // one toadstool: stem from (x, base) up h px, cap of half-width r
 const shroom = (c, x, base, h, r) => {
   const top = base - h
