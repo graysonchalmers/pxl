@@ -36,7 +36,7 @@ anim("stilt_hut_dry_idle", { w: 34, h: 46, frames: 8, fps: 8, outline: "k" }, hu
 })
 
 // inventory item: hand-drawn 14x14 + outline = 16x16, fills a pixel slot edge to edge
-sprite("stilt_hut_item", { w: 14, h: 14, outline: "k" }, `
+const STILT_HUT_ITEM_ROWS = `
   ......tt......
   ....tttttt....
   ..tttttttttt..
@@ -50,4 +50,11 @@ sprite("stilt_hut_item", { w: 14, h: 14, outline: "k" }, `
   .b..d..d...b..
   .b...dWWd..b..
   .b...d..d..b..
-  .B...dWWd..B..`)
+  .B...dWWd..B..`
+sprite("stilt_hut_item", { w: 14, h: 14, outline: "k" }, STILT_HUT_ITEM_ROWS)
+// selected-slot idle
+// draw grid rows pixel by pixel; dx(y) shifts a row (sway)
+var drawRows = (c, rows, dx = () => 0) => rows.trim().split("\n").forEach((r, y) => [...r.trim()].forEach((ch, x) => ch !== "." && c.px(x + dx(y), y, ch)))
+anim("stilt_hut_item_idle", { w: 14, h: 14, frames: 8, fps: 8, outline: "k" }, (c) => drawRows(c, STILT_HUT_ITEM_ROWS),
+  (c) => { const f = Math.sin(c.phase * TAU * 2) + Math.sin(c.phase * TAU * 3)
+    if (f > 0.6) { c.px(8, 4, "y"); c.px(9, 5, "y") } else if (f < -0.8) { c.px(9, 4, "w"); c.px(9, 5, "w") } })

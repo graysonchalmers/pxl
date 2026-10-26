@@ -28,7 +28,7 @@ anim("mangrove_idle", { w: 40, h: 56, frames: 8, fps: 8, outline: "k" }, mangrov
   (c) => mangroveCanopy(c, Math.round(Math.sin(c.phase * TAU))))
 
 // inventory item: hand-drawn 14x14 + outline = 16x16, fills a pixel slot edge to edge
-sprite("mangrove_item", { w: 14, h: 14, outline: "k" }, `
+const MANGROVE_ITEM_ROWS = `
   ....LLLff.....
   ..fLLLfffLf...
   .ffLLffffLLff.
@@ -42,4 +42,9 @@ sprite("mangrove_item", { w: 14, h: 14, outline: "k" }, `
   ....b.bh.b....
   ...b..bb..b...
   ..b..b..b..b..
-  .B..B....B..B.`)
+  .B..B....B..B.`
+sprite("mangrove_item", { w: 14, h: 14, outline: "k" }, MANGROVE_ITEM_ROWS)
+// selected-slot idle
+// draw grid rows pixel by pixel; dx(y) shifts a row (sway)
+var drawRows = (c, rows, dx = () => 0) => rows.trim().split("\n").forEach((r, y) => [...r.trim()].forEach((ch, x) => ch !== "." && c.px(x + dx(y), y, ch)))
+anim("mangrove_item_idle", { w: 14, h: 14, frames: 8, fps: 8, outline: "k" }, (c) => drawRows(c, MANGROVE_ITEM_ROWS, (y) => y < 7 ? Math.round(Math.sin(c.phase * TAU) * (y < 4 ? 1 : 0.6)) : 0))

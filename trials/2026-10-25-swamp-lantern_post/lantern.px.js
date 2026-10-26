@@ -22,7 +22,7 @@ anim("lantern_post_idle", { w: 22, h: 40, frames: 8, fps: 8, outline: "k" }, lan
   (c) => lanternFlame(c, 0.5 + 0.5 * Math.sin(c.phase * TAU * 2) * Math.cos(c.phase * TAU * 3)))
 
 // inventory item: hand-drawn 14x14 + outline = 16x16, fills a pixel slot edge to edge
-sprite("lantern_post_item", { w: 14, h: 14, outline: "k" }, `
+const LANTERN_POST_ITEM_ROWS = `
   dddddddddddd..
   bhBd......i...
   bhB.d....III..
@@ -36,4 +36,11 @@ sprite("lantern_post_item", { w: 14, h: 14, outline: "k" }, `
   bhB...........
   bhB...........
   bhB...........
-  dddd..........`)
+  dddd..........`
+sprite("lantern_post_item", { w: 14, h: 14, outline: "k" }, LANTERN_POST_ITEM_ROWS)
+// selected-slot idle
+// draw grid rows pixel by pixel; dx(y) shifts a row (sway)
+var drawRows = (c, rows, dx = () => 0) => rows.trim().split("\n").forEach((r, y) => [...r.trim()].forEach((ch, x) => ch !== "." && c.px(x + dx(y), y, ch)))
+anim("lantern_post_item_idle", { w: 14, h: 14, frames: 8, fps: 8, outline: "k" }, (c) => drawRows(c, LANTERN_POST_ITEM_ROWS),
+  (c) => { const f = Math.sin(c.phase * TAU * 2) * Math.cos(c.phase * TAU * 3)
+    if (f > 0.25) { c.px(10, 5, "u"); c.px(10, 4, "u") } else if (f < -0.25) { c.px(10, 5, "y"); c.px(10, 6, "y"); c.px(9, 4, "o"); c.px(11, 7, "o") } })

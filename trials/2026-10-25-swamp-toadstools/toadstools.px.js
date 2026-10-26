@@ -34,7 +34,7 @@ anim("glow_toadstools_idle", { w: 32, h: 32, frames: 8, fps: 8, outline: "k" }, 
 })
 
 // inventory item: hand-drawn 14x14 + outline = 16x16, fills a pixel slot edge to edge
-sprite("glow_toadstools_item", { w: 14, h: 14, outline: "k" }, `
+const GLOW_TOADSTOOLS_ITEM_ROWS = `
   ...ccccc....e.
   ..cllcccc.....
   .cllcccccc....
@@ -48,4 +48,12 @@ sprite("glow_toadstools_item", { w: 14, h: 14, outline: "k" }, `
   CCC.smS...sS..
   .sS.smS...sS..
   gggggggggggggg
-  .GGGGGGGGGGGG.`)
+  .GGGGGGGGGGGG.`
+sprite("glow_toadstools_item", { w: 14, h: 14, outline: "k" }, GLOW_TOADSTOOLS_ITEM_ROWS)
+// selected-slot idle
+// draw grid rows pixel by pixel; dx(y) shifts a row (sway)
+var drawRows = (c, rows, dx = () => 0) => rows.trim().split("\n").forEach((r, y) => [...r.trim()].forEach((ch, x) => ch !== "." && c.px(x + dx(y), y, ch)))
+anim("glow_toadstools_item_idle", { w: 14, h: 14, frames: 8, fps: 8, outline: "k" }, (c) => drawRows(c, GLOW_TOADSTOOLS_ITEM_ROWS),
+  (c) => { const b = Math.sin(c.phase * TAU) > 0
+    if (b) { c.px(2, 1, "e"); c.px(3, 1, "e"); c.px(2, 2, "e"); c.px(9, 6, "e"); c.px(1, 9, "e") }
+    c.px(12, Math.round(2 - c.phase * 2), c.phase < 0.5 ? "e" : "w") })
