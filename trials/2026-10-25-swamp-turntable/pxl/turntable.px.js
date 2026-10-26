@@ -1,7 +1,7 @@
 // Fake-3D pixel turntables. Two routes:
 // 1. mangrove: kiln renders the real 3D model in 12 orbit frames (background keyed out), pxl downsamples each into the swamp palette.
 // 2. lantern: hand-faked with math. The arm's length is cos(angle); when it swings behind the post it draws first and gets hidden.
-pal({ k: "#1a2014", b: "#86623e", B: "#6e5034", h: "#a07a50", d: "#5e4632", D: "#3e2e20",
+pal({ t: "#c8b26a", T: "#857238", w: "#8a6a48", W: "#ccad84", c: "#4a8064", C: "#2e4a3e", e: "#9fe8c8", s: "#cfc8ae", S: "#857e68", g: "#6b5740", k: "#1a2014", b: "#86623e", B: "#6e5034", h: "#a07a50", d: "#5e4632", D: "#3e2e20",
   L: "#8db04e", l: "#6e9a40", f: "#4e7a34", F: "#3e5e2e", G: "#2e4628",
   i: "#646a72", I: "#43484e", y: "#ffe2a0", Y: "#ffc860", o: "#e0943a", u: "#fff6d8" })
 
@@ -44,3 +44,9 @@ anim("lantern_turntable_slot", { w: 14, h: 14, frames: N, fps: 8, outline: "k" }
   c.rect(Math.min(px + 1, tip), 0, Math.abs(tip - (px + 1)) + 1, 1, sa < 0 ? "D" : "d")
   if (sa >= 0) lantern()
 })
+
+// hut and toadstools from their kiln orbits, same slot size
+const slotSpin = (name, src, palette) => anim(name, { w: 14, h: 14, fps: 8, outline: "k" },
+  ...[...Array(N)].map((_, i) => frame(image(`../keyed/${src}/f${String(i + 1).padStart(2, "0")}.png`, 0, 0, { w: 14, h: 14, palette }))))
+slotSpin("stilt_hut_turntable_slot", "stilt_hut", "tTwWbBdDy")
+slotSpin("glow_toadstools_turntable_slot", "glow_toadstools", "ceCsSgG")
